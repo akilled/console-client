@@ -41,6 +41,8 @@ namespace MinecraftClient.Protocol.Handlers
         private bool login_phase = true;
         private bool encrypted = false;
         private int protocolversion;
+        private int player_id;
+        private bool chest_open;
 
         // Server forge info -- may be null.
         private ForgeInfo forgeInfo;
@@ -573,6 +575,93 @@ namespace MinecraftClient.Protocol.Handlers
                         return false; //Ignored packet
                 }
             }
+            if (packetID == 0x2D)
+            {
+                byte window_id = readNextByte(packetData);
+                string window_type = readNextString(packetData);
+                string window_title = readNextString(packetData);
+                byte number_of_slots = readNextByte(packetData);
+                chest_open = window_type == "minecraft:chest";
+                Console.WriteLine("Window id: " + window_id + ", Window type: " + window_type
+                    + ", Window title: " + window_title + ", slot numbers: " + number_of_slots);
+            }
+            if (packetID == 0x2E)
+            {
+                Console.WriteLine("Window forcibly closed");
+                chest_open = false;
+            }
+            if (packetID == 0x30 && chest_open)
+            {
+                Console.WriteLine("Window items");
+                byte window_id = readNextByte(packetData);
+                short count = readNextShort(packetData);
+                while (count-- > 0)
+                {
+                    Console.WriteLine(BitConverter.ToString(packetData.ToArray()));
+                    bool item_present = readNextBool(packetData);
+                    if (item_present)
+                    {
+                        int item_id = readNextVarInt(packetData);
+                        byte item_count = readNextByte(packetData);
+                        byte nbt_header = readNextByte(packetData);
+                        if (nbt_header != 0)
+                        {
+                            switch(nbt_header)
+                            {
+                                case 1:
+                                    readNextByte(packetData);
+                                    break;
+                                case 2:
+                                    readNextShort(packetData);
+                                    break;
+                                case 3:
+                                    readNextInt(packetData);
+                                    break;
+                                case 4:
+                                    readNextULong(packetData);
+                                    break;
+                                case 5:
+                                    readNextInt(packetData);
+                                    break;
+                                case 6:
+                                    readNextDouble(packetData);
+                                    break;
+                                case 7:
+                                    readNextByteArray(packetData);
+                                    break;
+                                case 8:
+                                    readNextString(packetData);
+                                    break;
+                                case 9:
+                                    Console.WriteLine("9");
+                                    break;
+                                case 10:
+                                    readNextByteArray(packetData);
+                                    break;
+                                case 11:
+                                    Console.WriteLine("11");
+                                    break;
+                                case 12:
+                                    readNextULongArray(packetData);
+                                    break;
+                                default:
+                                    Console.WriteLine("fuck");
+                                    break;
+                                
+                            }
+                        }
+                        Console.WriteLine("Item id: " + item_id);
+                    }
+                }
+            }
+            if (packetID == 0x31)
+            {
+                Console.WriteLine("Window properties");
+            }
+            if (packetID == 0x32)
+            {
+                Console.WriteLine("ClientBound confirm transaction");
+            }
             // Regular in-game packets
             switch (getPacketIncomingType(packetID, protocolversion))
             {
@@ -581,7 +670,7 @@ namespace MinecraftClient.Protocol.Handlers
                     break;
                 case PacketIncomingType.JoinGame:
                     handler.OnGameJoined();
-                    readNextInt(packetData);
+                    player_id = readNextInt(packetData);
                     readNextByte(packetData);
                     if (protocolversion >= MC191Version)
                         this.currentDimension = readNextInt(packetData);
@@ -613,8 +702,9 @@ namespace MinecraftClient.Protocol.Handlers
                     readNextString(packetData);
                     break;
                 case PacketIncomingType.PlayerPositionAndLook:
-                    if (Settings.TerrainAndMovements)
+                    if (Settings.TerrainAndMovements || Settings.ItemPickup)
                     {
+                        SendPacket(0x0B, concatBytes(getVarInt(player_id), getVarInt(0), getVarInt(0)));
                         double x = readNextDouble(packetData);
                         double y = readNextDouble(packetData);
                         double z = readNextDouble(packetData);
@@ -1891,7 +1981,7 @@ namespace MinecraftClient.Protocol.Handlers
         /// <returns>True if the location update was successfully sent</returns>
         public bool SendLocationUpdate(Location location, bool onGround, byte[] yawpitch = null)
         {
-            if (Settings.TerrainAndMovements)
+            if (Settings.TerrainAndMovements || Settings.ItemPickup)
             {
                 PacketOutgoingType packetType;
                 if (yawpitch != null && yawpitch.Length == 8)

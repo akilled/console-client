@@ -39,6 +39,7 @@ namespace MinecraftClient
         private Location location;
         private byte[] yawpitch;
         private double motionY;
+        private int timer;
 
         private string host;
         private int port;
@@ -106,6 +107,7 @@ namespace MinecraftClient
             this.username = user;
             this.host = server_ip;
             this.port = port;
+            timer = 0;
 
             if (!singlecommand)
             {
@@ -510,6 +512,7 @@ namespace MinecraftClient
         /// </summary>
         public void OnUpdate()
         {
+            timer++;
             foreach (var bot in bots.ToArray())
             {
                 try
@@ -526,7 +529,7 @@ namespace MinecraftClient
                     else throw; //ThreadAbortException should not be caught
                 }
             }
-
+           
             if (Settings.TerrainAndMovements && locationReceived)
             {
                 lock (locationLock)
@@ -545,6 +548,15 @@ namespace MinecraftClient
                     }
                     yawpitch = null; //First 2 updates must be player position AND look, and player must not move (to conform with vanilla)
                 }
+            }
+            else if (Settings.ItemPickup && timer > 15 && locationReceived)
+            {
+                timer = 0;
+                for (int i = 0; i < 2; i++)
+                {
+                    handler.SendLocationUpdate(location, true, yawpitch);
+                }
+                yawpitch = null;
             }
         }
 

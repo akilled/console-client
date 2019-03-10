@@ -89,6 +89,7 @@ namespace MinecraftClient
         public static bool DisplayXPBarMessages = true;
         public static bool DisplayChatLinks = true;
         public static bool TerrainAndMovements = false;
+        public static bool ItemPickup = true;
         public static string PrivateMsgsCmdName = "tell";
         public static CacheType SessionCaching = CacheType.Disk;
         public static bool DebugMessages = false;
@@ -224,6 +225,7 @@ namespace MinecraftClient
                                                 case "showxpbarmessages": DisplayXPBarMessages = str2bool(argValue); break;
                                                 case "showchatlinks": DisplayChatLinks = str2bool(argValue); break;
                                                 case "terrainandmovements": TerrainAndMovements = str2bool(argValue); break;
+                                                case "itempickup": ItemPickup = str2bool(argValue); break;
                                                 case "privatemsgscmdname": PrivateMsgsCmdName = argValue.ToLower().Trim(); break;
                                                 case "botmessagedelay": botMessageDelay = TimeSpan.FromSeconds(str2int(argValue)); break;
                                                 case "debugmessages": DebugMessages = str2bool(argValue); break;
@@ -538,6 +540,7 @@ namespace MinecraftClient
                 + "showxpbarmessages=true             # Messages displayed above xp bar\r\n"
                 + "showchatlinks=true                 # Show links embedded in chat messages\r\n"
                 + "terrainandmovements=false          # Uses more ram, cpu, bandwidth\r\n"
+                + "itempickup=false                   # Supports item pickup\r\n"
                 + "sessioncache=disk                  # How to retain session tokens. Use 'none', 'memory' or 'disk'\r\n"
                 + "resolvesrvrecords=fast             # Use 'false', 'fast' (5s timeout), or 'true'. Required for joining some servers.\r\n"
                 + "accountlist=accounts.txt           # See README > 'Servers and Accounts file' for more info about this file\r\n"
