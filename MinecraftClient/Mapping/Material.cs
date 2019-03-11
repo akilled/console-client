@@ -182,6 +182,7 @@
         DoublePlant = 175
     }
 
+
     /// <summary>
     /// Defines extension methods for the Material enumeration
     /// </summary>
