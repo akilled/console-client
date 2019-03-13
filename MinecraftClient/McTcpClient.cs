@@ -549,12 +549,13 @@ namespace MinecraftClient
                     yawpitch = null; //First 2 updates must be player position AND look, and player must not move (to conform with vanilla)
                 }
             }
-            else if (Settings.ItemPickup && timer > 15 && locationReceived)
+            else if (Settings.ItemPickup && timer>15 && locationReceived)
             {
                 timer = 0;
                 for (int i = 0; i < 2; i++)
                 {
-                    handler.SendLocationUpdate(location, true, yawpitch);
+                    location = Movement.HandleGravity(world, location, ref motionY);
+                    handler.SendLocationUpdate(location, Movement.IsOnGround(world, location), yawpitch);
                 }
                 yawpitch = null;
             }

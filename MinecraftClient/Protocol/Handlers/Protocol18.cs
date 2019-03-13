@@ -46,6 +46,9 @@ namespace MinecraftClient.Protocol.Handlers
         private bool chest_open;
         private int chest_size;
         private string chest_title;
+        private int confirm;
+        private bool joined = true;
+        private bool loading;
 
         // Server forge info -- may be null.
         private ForgeInfo forgeInfo;
@@ -584,7 +587,11 @@ namespace MinecraftClient.Protocol.Handlers
                 string window_type = readNextString(packetData);
                 string window_title = readNextString(packetData);
                 window_title = window_title.Substring(14, window_title.Length - 16);
-                if (window_title.StartsWith("§lCHALLENGE: §6§n"))
+                if (window_title.StartsWith("ala"))
+                {
+                    loading = true;
+                    return false;
+                }else if (window_title.StartsWith("§lCHALLENGE: §6§n"))
                 {
                     window_title = window_title.Substring(17).Trim();
                 } else
@@ -607,6 +614,30 @@ namespace MinecraftClient.Protocol.Handlers
                 chest_title = "";
                 chest_id = 0;
             }
+            if (packetID == 0x2F)
+            {
+                byte window_id = readNextByte(packetData);
+                short slotnum = readNextShort(packetData);
+                if (slotnum == 40 && joined)
+                {
+                    byte[] data = concatBytes(getLong(0), new byte[] { 255 }, packetData.ToArray(),
+                        new byte[] { 255 }, new byte[] { 255 }, new byte[] { 255 });
+                    SendPacket(0x08, data);
+                    joined = false;
+                } else if (loading && slotnum == 4)
+                {
+                    byte[] chest = new byte[] { window_id };
+                    byte[] slot_id = getShort(4);
+                    byte[] button = new byte[] { 0 };
+                    byte[] action = getShort((short)(confirm++));
+                    byte[] mode = new byte[] { 0 };
+                    byte[] slot = packetData.ToArray();
+                    byte[] data = concatBytes(chest, slot_id, button, action, mode, slot);
+                    Console.WriteLine(BitConverter.ToString(data.ToArray()));
+                    SendPacket(0x0E, data);
+                    loading = false;
+                }
+            }
             if (packetID == 0x30 && chest_open)
             {
                 Console.WriteLine(BitConverter.ToString(packetData.ToArray()));
@@ -623,7 +654,7 @@ namespace MinecraftClient.Protocol.Handlers
                         byte[] chest = new byte[] { chest_id };
                         byte[] slot_id = getShort((short)i);
                         byte[] button = new byte[] { 0 };
-                        byte[] action = getShort((short)(chest_id + 1));
+                        byte[] action = getShort((short)(confirm++));
                         byte[] mode = new byte[] { 0 };
                         byte[] slot = concatBytes(getShort((short)item_id), new byte[] { 1 },
                             new byte[] { 0 }, new byte[] { 0 }, new byte[] { 0 });
@@ -636,13 +667,11 @@ namespace MinecraftClient.Protocol.Handlers
                     readData(4, packetData);
                 }
             }
-            if (packetID == 0x31)
-            {
-                Console.WriteLine("Window properties");
-            }
             if (packetID == 0x32)
             {
                 Console.WriteLine("ClientBound confirm transaction");
+                SendPacket(0x0F, packetData);
+                Console.WriteLine(readNextBool(packetData));
             }
             // Regular in-game packets
             switch (getPacketIncomingType(packetID, protocolversion))
@@ -651,6 +680,7 @@ namespace MinecraftClient.Protocol.Handlers
                     SendPacket(PacketOutgoingType.KeepAlive, packetData);
                     break;
                 case PacketIncomingType.JoinGame:
+                    joined = true;
                     handler.OnGameJoined();
                     player_id = readNextInt(packetData);
                     readNextByte(packetData);
@@ -675,7 +705,7 @@ namespace MinecraftClient.Protocol.Handlers
                             break;
                     }
                     catch (ArgumentOutOfRangeException) { /* No message type */ }
-                    handler.OnTextReceived(message, true);
+                    handler.OnTextReceived(message, true); 
                     break;
                 case PacketIncomingType.Respawn:
                     this.currentDimension = readNextInt(packetData);
@@ -1584,6 +1614,13 @@ namespace MinecraftClient.Protocol.Handlers
             byte[] theShort = BitConverter.GetBytes(number);
             Array.Reverse(theShort);
             return theShort;
+        }
+
+        private byte[] getLong(long number)
+        {
+            byte[] theLong = BitConverter.GetBytes(number);
+            Array.Reverse(theLong);
+            return theLong;
         }
 
         /// <summary>
